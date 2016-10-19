@@ -62,11 +62,22 @@ def bollinger_bands(df, stocks):
         r_mean.plot(label="Rolling Mean", ax=plot)
         bb_upper.plot(label="Upper Band", ax=plot)
         bb_lower.plot(label="Lower Band", ax=plot)
-        plot.legend(loc="Best")
+        plot.legend(loc="best")
         plt.show()
 
+
+def daily_returns(df, stocks):
+    ((df / df.shift(1) - 1)*100).plot()
+    plt.show()
+
+
+def cumulative_returns(df, stocks):
+    ((df.shift(1) / df.ix[0] - 1)*100).plot()
+    plt.show()
+
+
 # From beginning of 2012 until today.
-start = datetime.datetime(2016, 5, 1)
+start = datetime.datetime(2010, 10, 19)
 end = datetime.date.today()
 dates = pd.date_range(start, end)
 dates = remove_no_trade_days(dates)
@@ -74,7 +85,7 @@ dates = remove_no_trade_days(dates)
 # TODO: Remove holidays of trading calendar.
 
 # Hypothetically will support any amount of stocks...
-stock_symbols = ["AAPL", "GOOG"]
+stock_symbols = ["AAPL"]
 
 stocks_open = pd.DataFrame(index=dates, columns=stock_symbols)
 stocks_open.name = "Open"
@@ -110,3 +121,7 @@ for frame in complete_stock_info:
 
 # Bollinger Bands
 bollinger_bands(stocks_adj, stock_symbols)
+
+# Daily Returns
+daily_returns(stocks_adj, stock_symbols)
+cumulative_returns(stocks_adj, stock_symbols)
