@@ -20,14 +20,61 @@ import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 from pandas_datareader import data
+from pandas.tseries.holiday import AbstractHolidayCalendar, Holiday, \
+     nearest_workday, USMartinLutherKingJr, USPresidentsDay, GoodFriday, \
+     USMemorialDay, USLaborDay, USThanksgivingDay
+
+
+# Creating a trading calendar.
+class USTradingCalendar(AbstractHolidayCalendar):
+    rules = [
+        Holiday('New Years Day', month=1, day=1, observance=nearest_workday),
+        USMartinLutherKingJr,
+        USPresidentsDay,
+        GoodFriday,
+        USMemorialDay,
+        Holiday('Independence Day', month=7, day=4,
+                observance=nearest_workday),
+        USLaborDay,
+        USThanksgivingDay,
+        Holiday('Christmas', month=12, day=25, observance=nearest_workday)
+    ]
+
+
+def remove_no_trade_days(dates):
+    cal = USTradingCalendar()
+    # Remove weekends
+    dates = dates[dates.dayofweek < 5]
+    # Remove actual holidays
+    return dates.difference(cal.holidays(dates[0], dates[len(dates)-1]))
+
+
+def bollinger_bands(df, stocks):
+    for stock in stocks:
+        r_mean = df[stock].rolling(center=False, window=15).mean()
+        r_std = df[stock].rolling(center=False, window=15).std()
+        bb_upper = r_mean + (r_std*2)  # 2 deviations
+        bb_lower = r_mean - (r_std*2)
+
+        plot = df[stock].plot(title=stock + " w/ BB", label=stock)
+        plot.set_xlabel("Date")
+        plot.set_ylabel("Price")
+        r_mean.plot(label="Rolling Mean", ax=plot)
+        bb_upper.plot(label="Upper Band", ax=plot)
+        bb_lower.plot(label="Lower Band", ax=plot)
+        plot.legend(loc="Best")
+        plt.show()
 
 # From beginning of 2012 until today.
-start = datetime.datetime(2012, 10, 18)
+start = datetime.datetime(2016, 5, 1)
 end = datetime.date.today()
 dates = pd.date_range(start, end)
+dates = remove_no_trade_days(dates)
+
+# TODO: Remove holidays of trading calendar.
 
 # Hypothetically will support any amount of stocks...
-stock_symbols = ["AAPL", "NFLX", "FB"]
+stock_symbols = ["AAPL", "GOOG"]
 
 stocks_open = pd.DataFrame(index=dates, columns=stock_symbols)
 stocks_open.name = "Open"
@@ -55,6 +102,11 @@ for symbol in stock_symbols:
     stocks_vol[symbol] = df["Volume"]
     stocks_adj[symbol] = df["Adj Close"]
 
+# Plot all of the charts for fun
 for frame in complete_stock_info:
-    frame[stock_symbols].plot(title=frame.name)
+    plot = frame[stock_symbols].plot(title=frame.name)
     plt.show()
+
+
+# Bollinger Bands
+bollinger_bands(stocks_adj, stock_symbols)
