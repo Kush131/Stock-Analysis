@@ -18,6 +18,7 @@ High, Low, Close, Volume, and Adjusted Close.
 
 import datetime
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from pandas_datareader import data
 from pandas.tseries.holiday import AbstractHolidayCalendar, Holiday, \
@@ -66,8 +67,18 @@ def bollinger_bands(df, stocks):
         plt.show()
 
 
-def daily_returns(df, stocks):
-    ((df / df.shift(1) - 1)*100).plot()
+def daily_returns(df, stocks, graph_type):
+    # TODO: This function is an absolute clusterf***. Clean it up.
+    dr = ((df / df.shift(1) - 1)*100)
+    dr.fillna(method="bfill", inplace=True) # Get rid of NaN for first day.
+    if graph_type == "scatter":
+        dr.plot(kind=graph_type, x="AAPL", y="GOOG")
+        test, test_two = np.polyfit(dr["AAPL"], dr["GOOG"], 1)
+        plt.plot(dr["AAPL"], test*dr["AAPL"] + test_two,  '-', color="red")
+    elif graph_type == "hist":
+        dr.plot(kind="hist", bins=60)
+    else:
+        dr.plot()
     plt.show()
 
 
@@ -77,15 +88,14 @@ def cumulative_returns(df, stocks):
 
 
 # From beginning of 2012 until today.
-start = datetime.datetime(2010, 10, 19)
-end = datetime.date.today()
+start = datetime.datetime(2015, 10, 19)
+end = datetime.date(2016, 10, 19)
+# end = datetime.date.today()
 dates = pd.date_range(start, end)
 dates = remove_no_trade_days(dates)
 
-# TODO: Remove holidays of trading calendar.
-
 # Hypothetically will support any amount of stocks...
-stock_symbols = ["AAPL"]
+stock_symbols = ["AAPL", "GOOG"]
 
 stocks_open = pd.DataFrame(index=dates, columns=stock_symbols)
 stocks_open.name = "Open"
@@ -113,6 +123,11 @@ for symbol in stock_symbols:
     stocks_vol[symbol] = df["Volume"]
     stocks_adj[symbol] = df["Adj Close"]
 
+# Fill all stocks for NA values.
+for frame in complete_stock_info:
+    frame.fillna(method="ffill", inplace=True)
+    frame.fillna(method="bfill", inplace=True)
+
 # Plot all of the charts for fun
 for frame in complete_stock_info:
     plot = frame[stock_symbols].plot(title=frame.name)
@@ -123,5 +138,5 @@ for frame in complete_stock_info:
 bollinger_bands(stocks_adj, stock_symbols)
 
 # Daily Returns
-daily_returns(stocks_adj, stock_symbols)
+daily_returns(stocks_adj, stock_symbols, "scatter")
 cumulative_returns(stocks_adj, stock_symbols)
