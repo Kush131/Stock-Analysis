@@ -16,6 +16,7 @@ in comparison to eachother according to the six categories on YF: Open,
 High, Low, Close, Volume, and Adjusted Close.
 """
 
+import math
 import datetime
 import pandas as pd
 import numpy as np
@@ -67,24 +68,32 @@ def bollinger_bands(df, stocks):
         plt.show()
 
 
-def daily_returns(df, stocks, graph_type):
-    # TODO: This function is an absolute clusterf***. Clean it up.
-    dr = ((df / df.shift(1) - 1)*100)
-    dr.fillna(method="bfill", inplace=True) # Get rid of NaN for first day.
-    if graph_type == "scatter":
-        dr.plot(kind=graph_type, x="AAPL", y="GOOG")
-        test, test_two = np.polyfit(dr["AAPL"], dr["GOOG"], 1)
-        plt.plot(dr["AAPL"], test*dr["AAPL"] + test_two,  '-', color="red")
-    elif graph_type == "hist":
-        dr.plot(kind="hist", bins=60)
-    else:
-        dr.plot()
-    plt.show()
+def sharpe_ratio(df, risk_free_rate):
+    # Currently assumes 0 for risk free rate and annual sampling
+    dr = daily_returns(df)
+    print(math.sqrt(252) * (dr.mean()/dr.std()))
 
 
-def cumulative_returns(df, stocks):
-    ((df.shift(1) / df.ix[0] - 1)*100).plot()
-    plt.show()
+def daily_returns(df):
+    dr = (df / df.shift(1)) - 1
+    dr.ix[0] = 0  # First value should be zero.
+    return dr
+    # Former plot info that can be used later.
+    # if graph_type == "scatter":
+    #    dr.plot(kind=graph_type, x="AAPL", y="GOOG")
+    #    test, test_two = np.polyfit(dr["AAPL"], dr["GOOG"], 1)
+    #    plt.plot(dr["AAPL"], test*dr["AAPL"] + test_two,  '-', color="red")
+    # elif graph_type == "hist":
+    #    dr.plot(kind="hist", bins=60)
+    # else:
+    #    dr.plot()
+    # plt.show()
+
+
+def cumulative_returns(df):
+    cr = (df.shift(1) / df.ix[0]) - 1
+    cr.ix[0] = 0
+    return cr
 
 
 # From beginning of 2012 until today.
@@ -135,8 +144,10 @@ for frame in complete_stock_info:
 
 
 # Bollinger Bands
-bollinger_bands(stocks_adj, stock_symbols)
+# bollinger_bands(stocks_adj, stock_symbols)
 
 # Daily Returns
-daily_returns(stocks_adj, stock_symbols, "scatter")
-cumulative_returns(stocks_adj, stock_symbols)
+# daily_returns(stocks_adj, stock_symbols, "scatter")
+# cumulative_returns(stocks_adj, stock_symbols)
+
+sharpe_ratio(stocks_adj, 0.0)
