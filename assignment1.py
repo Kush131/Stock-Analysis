@@ -16,7 +16,6 @@ give a range).
 import math
 import datetime
 import pandas as pd
-import matplotlib.pyplot as plt
 from pandas_datareader import data
 from pandas.tseries.holiday import AbstractHolidayCalendar, Holiday, \
      nearest_workday, USMartinLutherKingJr, USPresidentsDay, GoodFriday, \
@@ -24,39 +23,23 @@ from pandas.tseries.holiday import AbstractHolidayCalendar, Holiday, \
 
 
 class USTradingCalendar(AbstractHolidayCalendar):
-    rules = [
-        Holiday('New Years Day', month=1, day=1, observance=nearest_workday),
-        USMartinLutherKingJr,
-        USPresidentsDay,
-        GoodFriday,
-        USMemorialDay,
-        Holiday('Independence Day', month=7, day=4,
-                observance=nearest_workday),
-        USLaborDay,
-        USThanksgivingDay,
-        Holiday('Christmas', month=12, day=25, observance=nearest_workday)
-    ]
+        rules = [
+            Holiday('New Years Day', month=1, day=1,
+                    observance=nearest_workday),
+            USMartinLutherKingJr,
+            USPresidentsDay,
+            GoodFriday,
+            USMemorialDay,
+            Holiday('Independence Day', month=7, day=4,
+                    observance=nearest_workday),
+            USLaborDay,
+            USThanksgivingDay,
+            Holiday('Christmas', month=12, day=25, observance=nearest_workday)
+        ]
 
 
-def sharpe_ratio(df, risk_free_rate):
-    # Currently assumes 0 for risk free rate and annual sampling
-    dr = daily_returns(df)
-    print(math.sqrt(252) * (dr.mean()/dr.std()))
-
-
-def daily_returns(df):
-    dr = (df / df.shift(1)) - 1
-    dr.ix[0] = 0  # First value should be zero.
-    return dr
-
-
-def cumulative_returns(df):
-    cr = (df.shift(1) / df.ix[0]) - 1
-    cr.ix[0] = 0
-    return cr
-
-
-def remove_no_trade_days(dates):
+def create_trading_calendar(start, end):
+    dates = pd.date_range(start, end)
     cal = USTradingCalendar()
     # Remove weekends
     dates = dates[dates.dayofweek < 5]
@@ -64,22 +47,47 @@ def remove_no_trade_days(dates):
     return dates.difference(cal.holidays(dates[0], dates[len(dates)-1]))
 
 
-def access_portfolio(dates, stocks, starting_value, allocation):
-    # Initial setup & of data frame
-    stocks_adj = pd.DataFrame(index=dates, columns=stock_symbols)
-    stocks_adj.name = "Adjusted Close"
+class stock:
+    symbol = None  # The stock symbol
+    volume = None  # How much of the stock we own
+    start = None  # The beginning of our stock pricing
+    end = None   # The end of our stock pricing
+    df = None  # The dataframe with our stock data
 
-    # Grab the data from yahoo
-    for symbol in stocks:
-        df = data.DataReader(symbol, "yahoo", start, end)
-        stocks_adj[symbol] = df["Adj Close"]
+    def __init__(self, symbol, vol, start, end):
+        self.symbol = symbol
+        self.volume = vol
+        self.start = start
+        self.end = end
+        dates = create_trading_calendar(start, end)
+        self.df = pd.DataFrame(index=dates, columns=[symbol])
+        df = data.DataReader([symbol], "yahoo", start, end)
+        self.df[symbol] = df["Adj Close"]
+        self.df.ffill(inplace=True)
+        self.df.bfill(inplace=True)
 
-    # Fill all stocks for NA values.
-    stocks_adj.fillna(method="ffill", inplace=True)
-    stocks_adj.fillna(method="bfill", inplace=True)
+    def daily_returns(self):
+        dr = (self.df / self.df.shift(1)) - 1
+        dr.ix[0] = 0  # First value should be zero.
+        return dr
 
-    daily_returns(stocks_adj)
-    cumulative_returns(stocks_adj)
+    def cumulative_returns(self):
+        cr = (self.df.shift(1) / self.df.ix[0]) - 1
+        cr.ix[0] = 0
+        return cr
+
+    def sharpe_ratio(self, risk_free_rate):
+        # Currently assumes 0 for risk free rate and annual sampling
+        dr = stock.daily_returns(self.df)
+        print(math.sqrt(252) * (dr.mean()/dr.std()))
+
+    def asset_value(self):
+        return self.volume * self.df
+
+
+class portfolio:
+    stocks = []
+    allocation = []
 
 # -----------------------------------------------------------------------------
 # Define data to access portfolio
@@ -88,17 +96,8 @@ def access_portfolio(dates, stocks, starting_value, allocation):
 # One year of trading data
 start = datetime.datetime(2015, 10, 19)
 end = datetime.date(2016, 10, 19)
-dates = pd.date_range(start, end)
-dates = remove_no_trade_days(dates)
 
-# Stocks we want to access
-stock_symbols = ["AAPL", "GOOG"]
-
-# How much initial money did we put in?
-starting_value = 1000000
-
-# How much of the starting value did you put into each stock?
-allocation = [.5, .5]
-
-# Access the portfolio
-access_portfolio(dates, stock_symbols, starting_value, allocation)
+google = stock("GOOG", 2, start, end)
+print(google.daily_returns().plot())
+print(google.cumulative_returns().plot())
+print(google.asset_value().plot())

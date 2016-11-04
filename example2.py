@@ -104,7 +104,7 @@ dates = pd.date_range(start, end)
 dates = remove_no_trade_days(dates)
 
 # Hypothetically will support any amount of stocks...
-stock_symbols = ["AAPL", "GOOG"]
+stock_symbols = ["AAPL", "GOOG", "GLD", "XOM"]
 
 stocks_open = pd.DataFrame(index=dates, columns=stock_symbols)
 stocks_open.name = "Open"
